@@ -1,1 +1,5 @@
 .idea
+*.out
+*.sum
+alert_handler
+
