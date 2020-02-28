@@ -18,27 +18,35 @@ public class PerformanceTest {
 
     private DeviceRepositoryPort repositoryPort = new DeviceRepositoryPort() {
         @Override
-        public Optional<Device> findDevice(String deviceName) {
+        public synchronized Optional<Device> findDevice(String deviceName) {
             return devices.containsKey(deviceName) ? of(devices.get(deviceName)) : empty();
         }
 
         @Override
         public void updateAlertsCount(String deviceName, int alertsCount) {
-            Device device = findDevice(deviceName).orElse(new Device(deviceName));
+            Device device = getDevice(deviceName);
             try {
                 Thread.sleep(0, 1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
             device.alertsCount = alertsCount;
-            devices.put(deviceName, device);
+            putDevice(deviceName, device);
         }
 
         @Override
         public void updateMostFailingNeighbour(String deviceName, Device neighbour) {
-            Device device = findDevice(deviceName).orElse(new Device(deviceName));
+            Device device = getDevice(deviceName);
             device.mostFailingNeighbour = of(neighbour);
-            devices.put(deviceName, device);
+            putDevice(deviceName, device);
+        }
+
+        private synchronized Device getDevice(String deviceName) {
+            return findDevice(deviceName).orElse(new Device(deviceName));
+        }
+
+        private synchronized Device putDevice(String deviceName, Device device) {
+            return devices.put(deviceName, device);
         }
     };
 
@@ -91,10 +99,6 @@ public class PerformanceTest {
             }
         }
 
-        public int getHandledAlertsCount() {
-            return handledAlertsCount;
-        }
-
     }
 
     private String randomDeviceName() {
@@ -115,7 +119,4 @@ public class PerformanceTest {
         }
     }
 
-    private boolean someAreAlive(List<WorkerThread> workers) {
-        return 0 != workers.stream().filter(Thread::isAlive).count();
-    }
 }
